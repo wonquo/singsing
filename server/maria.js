@@ -1,6 +1,6 @@
 const maria = require("mysql");
 
-const conn = maria.createConnection({
+const conn = maria.createConnection({  
   host: "higher.cafe24app.com",
   port: 3306,
   user: "hn02205",

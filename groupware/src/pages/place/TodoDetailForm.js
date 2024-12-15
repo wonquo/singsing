@@ -16,8 +16,8 @@ import { IconButton } from '@mui/material';
 import { CloseOutlined } from '@ant-design/icons';
 //LineProgress 추가
 import { LinearProgress } from '@mui/material';
-//import { check } from 'prettier';
-//detailListData 추가
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 
 const TodoDetailForm = () => {
@@ -29,6 +29,9 @@ const TodoDetailForm = () => {
   const { setModalIsOpen, modalData } = useModalStore();
   const [isCreate, setIsCreate] = useState(true);
   
+  //completed_yn 추가
+  const [completed_yn, setCompleted_yn] = useState('N');
+
   const { detailListData, setDetailListData } = useTodoDetailListStore(); //eslint-disable-line no-unused-vars
 
   const style = {
@@ -40,7 +43,7 @@ const TodoDetailForm = () => {
       padding: '0.5rem'
     },
     typography2: {
-      flex: '17.45%',
+      flex: '10.5%',
       display: 'flex',
       alignItems: 'center',
       borderRight: '2px solid #e0e0e0',
@@ -48,15 +51,33 @@ const TodoDetailForm = () => {
     }
   };
 
+  //completed_yn detailListData.check_yn 변경 시 변경
+  const checkCompleted = () => {
+    let checkCnt = 0;
+    for (let i = 0; i < detailListData.length; i++) {
+      if (detailListData[i].check_yn == "t") {
+        checkCnt++;
+      }
+    }
+    if (checkCnt === detailListData.length) {
+      setCompleted_yn('Y');
+    } else {
+      setCompleted_yn('N');
+    }
+  };
+  
+
   useEffect(() => {
     if (modalData.todo_master_id) {
       setIsCreate(false);
     }
     useTodoDetailFetchStore.getState().todoDetailFetch(modalData.todo_master_id);
     setLoading(false);
+    setCompleted_yn(modalData.completed_yn);
+
+    console.log('detailListData', detailListData);
 
   }, [modalData]);
-
 
 
   const addRow = () => {
@@ -64,7 +85,8 @@ const TodoDetailForm = () => {
       cellStatus: 'add',
       todo_master_id: '',
       contents: '',
-      check_yn: false,
+      check_yn: 'f',
+      seq: detailListData.length + 1,
       remark: ''
     };
     setDetailListData([...detailListData, newRow]);
@@ -78,6 +100,7 @@ const TodoDetailForm = () => {
         todo_master_id: '',
         contents: row.contents,
         check_yn: row.check_yn,
+        seq: detailListData.length + 1,
         remark: row.remark
       };
     });
@@ -89,21 +112,70 @@ const TodoDetailForm = () => {
     const filteredRows = detailListData.filter((row) => !selectedRows.includes(row));
     setDetailListData(filteredRows);
   }
+  const moveRow = (direction) => {
+    const selectedRows = gridRef.current.api.getSelectedRows(); // 선택된 로우 가져오기
+    if (selectedRows.length === 0) return; // 선택된 로우가 없으면 종료
+  
+    const selectedRowIndex = detailListData.indexOf(selectedRows[0]); // 첫 번째 선택된 로우의 인덱스 가져오기
+    const newIndex = selectedRowIndex + direction;
+  
+    // 이동이 불가능한 경우 종료 (위로 이동 시 첫 번째 로우, 아래로 이동 시 마지막 로우)
+    if (newIndex < 0 || newIndex >= detailListData.length) return;
+  
+    const newDetailListData = [...detailListData];
+    const temp = newDetailListData[selectedRowIndex];
+    newDetailListData[selectedRowIndex] = newDetailListData[newIndex];
+    newDetailListData[newIndex] = temp;
 
-  const [loading, setLoading] = useState(true);
+    //seq 변경
+    newDetailListData.forEach((row, index) => {
+      row.seq = index + 1;
+    }
+    );
+  
+    setDetailListData(newDetailListData); // 데이터 업데이트
+  
+    // 이동된 로우의 선택 상태 유지
+    setTimeout(() => {
+      gridRef.current.api.forEachNode((node) => {
+        if (node.rowIndex === newIndex) {
+          node.setSelected(true);
+        }
+      });
+    }, 0);
+  };
+  
+
+// 위로 이동
+const moveRowUp = () => moveRow(-1);
+
+// 아래로 이동
+const moveRowDown = () => moveRow(1);
+
+const [loading, setLoading] = useState(true);
+  
 
 
   const gridColumnDefs = [
     { headerCheckboxSelection: true, checkboxSelection: true, width: '60px' },
 
     { headerName: '마스터코드ID', field: 'todo_master_id', sortable: true, filter: true, width: '180', hide: true },
-    //No
+    //seq 추가
+    {
+      headerName: 'No',
+      field: 'seq',
+      sortable: true,
+      width: '60',
+      valueGetter: (params) => {
+        return params.node.rowIndex + 1;
+      },
+    },
     {
       headerName: '내용',
       field: 'contents',
       sortable: true,
       filter: true,
-      width: '600',
+      width: '530',
       editable: true,
     },
     {
@@ -254,7 +326,7 @@ const TodoDetailForm = () => {
           <form onSubmit={handleSubmit} noValidate>
             <Grid container spacing={1}>
               {/* 작성일자 */}
-              <Grid item xs={6}>
+              <Grid item xs={4}>
                 <Stack direction="row" spacing={2}>
                   <Typography variant="body1" sx={style.typography}>
                     <span style={{ color: 'red', marginRight: '2px' }}>*</span>
@@ -276,7 +348,7 @@ const TodoDetailForm = () => {
                   &nbsp;&nbsp;&nbsp;&nbsp;
                 </Stack>
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={4}>
                 <Stack direction="row" spacing={2}>
                   <Typography variant="body1" sx={style.typography}>
                     <span style={{ color: 'red', marginRight: '2px' }}>*</span>
@@ -293,6 +365,32 @@ const TodoDetailForm = () => {
                     fullWidth
                     error={Boolean(touched.writer && errors.writer)}
                   />
+                  <FormHelperText error id="writer-error">
+                    {touched.writer && errors.writer}
+                  </FormHelperText>
+                </Stack>
+              </Grid>
+              <Grid item xs={4}>
+                <Stack direction="row" spacing={2}>
+                  <Typography variant="body1" sx={style.typography}>
+                    완료여부
+                  </Typography>
+                  <Box sx={{ flex: '70%' }}>
+                  <OutlinedInput
+                    id="completed_yn"
+                    type="text"
+                    sx={{ width: '50px', 
+                     }}
+                    name="completed_yn"
+                    inputProps={{
+                      style: { textAlign: 'center' }  // 내부 input 요소의 텍스트 정렬
+                    }}
+                    value={completed_yn}
+                    //readOnly, disabled 추가
+                    readOnly
+                    error={Boolean(touched.writer && errors.writer)}
+                  />
+                  </Box>
                   <FormHelperText error id="writer-error">
                     {touched.writer && errors.writer}
                   </FormHelperText>
@@ -350,6 +448,21 @@ const TodoDetailForm = () => {
             >
               삭제
             </Button>
+            <IconButton
+              onClick={moveRowUp}
+            >
+              <ArrowUpwardIcon />
+            </IconButton>
+            <IconButton
+              onClick={moveRowDown}
+            >
+
+              <ArrowDownwardIcon />
+            </IconButton> 
+
+
+
+
           </Box>
         </Grid>
         <div
@@ -368,12 +481,11 @@ const TodoDetailForm = () => {
               if (e.data.cellStatus !== 'add') {
                 e.data.cellStatus = 'edit';
               }
+              checkCompleted();
             }}
-
             gridOptions={{
               rowHeight: 28,
             }}
-
             onCellDoubleClicked={(params) => {
               if (params.colDef.field === 'check_yn') {
                 // 체크박스 컬럼에서 더블클릭 시 아무 동작도 하지 않도록 방지

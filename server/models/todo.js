@@ -8,6 +8,7 @@ class todoModel {
     subject,
     write_date,
     writer,
+    completed_yn,
     last_update_date,
     last_updated_by
   ) {
@@ -15,6 +16,7 @@ class todoModel {
     this.subject = subject;
     this.write_date = write_date;
     this.writer = writer;
+    this.completed_yn = completed_yn;
     this.last_update_date = last_update_date;
     this.last_updated_by = last_updated_by;
   }
@@ -25,12 +27,14 @@ class todoDetailModel {
     todo_master_id,
     contents,
     check_yn,
-    remark
+    remark,
+    seq
   ) {
     this.todo_master_id = todo_master_id;
     this.contents = contents;
     this.check_yn = check_yn;
-    this.remark = remark
+    this.remark = remark;
+    this.seq = seq;
   }
 }
 
@@ -43,11 +47,14 @@ function getTodoList(params, callback) {
               subject,
               DATE_FORMAT(write_date, '%Y-%m-%d') AS write_date,
               writer,
+                (SELECT CASE WHEN COUNT(*) > 0 THEN 'N' ELSE 'Y' END
+                FROM tb_todo_detail td
+                WHERE td.todo_master_id = tm.todo_master_id
+                AND td.check_yn = 'f') AS completed_yn,
               last_update_date,
               last_updated_by
-    FROM   tb_todo_master
+    FROM   tb_todo_master tm
     WHERE  1 = 1
-    ORDER BY todo_master_id 
     `;
   let queryParams = [];
   if (subject) {
@@ -62,6 +69,7 @@ function getTodoList(params, callback) {
     query += " AND write_date <= DATE_FORMAT(?, '%Y-%m-%d')";
     queryParams.push(to_date);
   }
+    query += " ORDER BY write_date desc, todo_master_id DESC";
 
   console.log(connection.format(query, queryParams));
   connection.query(query, queryParams, (error, results) => {
@@ -77,6 +85,7 @@ function getTodoList(params, callback) {
             row.subject,
             row.write_date,
             row.writer,
+            row.completed_yn,
             row.last_update_date,
             row.last_updated_by
         )
@@ -93,10 +102,11 @@ function getTodoDetail(todo_master_id, callback) {
     SELECT todo_master_id,
                 contents,
                 check_yn,
-                remark
+                remark,
+                seq
     FROM   tb_todo_detail
     WHERE  todo_master_id = ?
-    ORDER BY todo_detail_id 
+    ORDER BY seq ASC
     `;
     let queryParams = [];
     queryParams.push(todo_master_id);
@@ -115,9 +125,12 @@ function getTodoDetail(todo_master_id, callback) {
             row.todo_master_id,
             row.contents,
             row.check_yn,
-            row.remark
+            row.remark,
+            row.seq
             )
         );
+
+        console.log("todo: ", todo);
         callback(null, todo);
     });
 }
@@ -176,9 +189,11 @@ function insertTodoDetail(todo, callback) {
             contentS,
             check_yn,
             remark,
+            seq,
             last_updated_by
         ) VALUES 
         (
+            ?,
             ?,
             ?,
             ?,
@@ -192,6 +207,7 @@ function insertTodoDetail(todo, callback) {
         todo.contents,
         todo.check_yn,
         todo.remark,
+        todo.seq,
         todo.last_updated_by,
     ];
     

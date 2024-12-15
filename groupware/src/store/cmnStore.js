@@ -21,7 +21,8 @@ const useSelectedListStore = create((set) => ({
 }));
 
 const useAxiosStore = create((set) => ({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: 'http://higher.cafe24app.com/api',
+  //baseURL: 'http://localhost:3000/api',
   setBaseURL: (url) => set({ baseURL: url })
 }));
 

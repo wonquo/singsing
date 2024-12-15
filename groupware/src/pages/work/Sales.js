@@ -23,6 +23,7 @@ import { useModalStore, useSelectedListStore } from 'store/cmnStore';
 import { useVendorFetchStore } from 'store/vendorStore';
 import { useProductFetchStore } from 'store/productStore';
 import MonthCal from 'components/MonthCal';
+import * as XLSX from 'xlsx';
 
 // ============================|| 사용자 관리 ||============================ //
 
@@ -259,6 +260,43 @@ const Sales = () => {
     salesFetch();
   };
 
+  //거래처별 매출액 다운로드 요구사항 추가
+  const handleDownload = () => {
+    //headr 은 no~과세구분 까지
+    const mHeaders = ['No', '기준월', '사업자', '거래처', '제품명', '과세구분'];
+     // Group data by 기준월, 사업자, 거래처, 제품명, 과세구분
+  const groupedData = listData.reduce((acc, cur) => {
+    const key = `${cur.sales_date}_${cur.business_name}_${cur.vendor_name}_${cur.product_name}_${cur.tax}`;
+    if (!acc[key]) {
+      acc[key] = {
+        기준월: cur.sales_date,
+        사업자: cur.business_name,
+        거래처: cur.vendor_name,
+        제품명: cur.product_name,
+        과세구분: cur.tax,
+        매출액: 0,
+      };
+    }
+    acc[key].매출액 += cur.total_sales;
+    return acc;
+  }, {});
+
+  // Convert groupedData to an array
+  const mData = Object.values(groupedData);
+
+  // Add a sequential 'No' column 
+  mData.forEach((item, index) => {
+    item.No = index + 1;
+  });
+    const worksheet = XLSX.utils.json_to_sheet(mData, { header: mHeaders });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    //file 명은 현재시간
+    const date = new Date();
+    XLSX.writeFile(workbook, `excel_${date.getTime()}.xlsx`);
+  };
+
   return (
     <ComponentSkeleton>
       <Grid container spacing={2}>
@@ -439,6 +477,13 @@ const Sales = () => {
           </MainCard>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px' }}>
             <Box>
+            <Button
+              variant="contained"
+              onClick={handleDownload}
+              sx={{ marginRight: '10px', fontWeight: 'bold', height: '32px', backgroundColor: '#808080', color: 'white' }}
+            >
+              거래처별 매출액 다운로드
+            </Button>
               <ExcelDownloadButton data={excelData} headers={headerDefs} />
               <ExcelUploadButton onUpload={(data) => console.log(data)} key1="sales" />
               <Button

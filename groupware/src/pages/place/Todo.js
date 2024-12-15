@@ -42,7 +42,10 @@ const Todo = () => {
     { headerName: '제목', field: 'subject', sortable: true, filter: true, width: '800' },
     { headerName: '작성일자', field: 'write_date', sortable: true, filter: true, width: '200' },
     { headerName: '작성자', field: 'writer', sortable: true, filter: true, width: '200' },
-    { headerName: '상태', field: 'status', sortable: true, filter: true, width: '200' }
+    { headerName: '완료여부', field: 'completed_yn', sortable: true, filter: true, width: '105' ,
+      //중앙정렬
+      cellStyle: { textAlign: 'center' }
+    }
   ];
   
   const headerDefs = ['No', '제목', '작성일자', '작성자', '상태'];
